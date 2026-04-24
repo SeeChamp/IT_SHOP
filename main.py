@@ -1,3 +1,4 @@
+import os
 import psycopg2
 from model  import ProductCreate, UserCreate, Userlogin
 from jose import JWTError, jwt
@@ -85,11 +86,7 @@ def require_admin(current_user: dict = Depends(get_current_user)):
 
 
 conn = psycopg2.connect(
-    host = "localhost",
-    database = "it_shop",
-    user = "rabbit",
-    password = "1158",
-    port = "5433"
+    os.getenv("DATABASE_URL")
 )
 
 
