@@ -1,0 +1,1 @@
+SELECT user_id FROM products WHERE id = 1;

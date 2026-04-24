@@ -1,0 +1,125 @@
+ วัตถุประสงค์ของโปรเจกต์
+สร้าง Web App ด้วย Streamlit สำหรับพยากรณ์ราคาหุ้น AAPL ล่วงหน้า 7 วัน และเปรียบเทียบผลลัพธ์จาก 3 โมเดลยอดนิยมด้าน Time Series ได้แก่:
+
+ARIMA (AutoRegressive Integrated Moving Average)
+
+Prophet (โดย Facebook)
+
+LSTM (Long Short-Term Memory Neural Network)
+
+
+เครื่องมือที่ใช้
+หมวด				รายละเอียด
+Data Source	yfinance ดึงข้อมูลหุ้นแบบ real-time
+Visualization	matplotlib, streamlit.pyplot
+Modeling	statsmodels (ARIMA), prophet, tensorflow.keras (LSTM)
+Evaluation	sklearn.metrics.mean_squared_error สำหรับคำนวณ RMSE
+Interface	Streamlit สำหรับ UI
+
+Pipeline การทำงาน
+1. Input Parameters
+Stock Symbol (เช่น AAPL)
+
+Forecast Days (เช่น 7)
+
+Start Date, End Date (เช่น 2020-01-01 ถึง 2025-05-20)
+
+
+Data Preprocessing
+ดึงข้อมูลราคาปิด (Close price) ด้วย yfinance
+
+ปรับให้เป็น daily frequency (asfreq('D'))
+
+เติมช่องว่างข้อมูลด้วย .ffill()
+
+เตรียมข้อมูลรูปแบบที่เหมาะสมแต่ละโมเดล เช่น Prophet ต้องใช้คอลัมน์ ds และ y
+
+
+โมเดลที่ใช้พยากรณ์
+🔹 ARIMA
+ใช้ order=(5,1,0) ซึ่งเป็นพารามิเตอร์พื้นฐาน
+
+พยากรณ์ 7 วันถัดไปด้วย .forecast(steps=7)
+
+🔹 Prophet
+ตั้งค่า seasonality_mode='additive', changepoint_prior_scale=0.05 เพื่อควบคุมความไวต่อความเปลี่ยนแปลง
+
+สร้าง future frame ด้วย .make_future_dataframe()
+
+พยากรณ์ผลลัพธ์ .predict()
+
+🔹 LSTM
+ใช้ข้อมูลในรูปแบบ 60 วันย้อนหลัง (look_back = 60)
+
+นำข้อมูลมาทำ normalization ด้วย MinMaxScaler
+
+โมเดลประกอบด้วย 1 ชั้น LSTM + 1 Dense
+
+พยากรณ์แบบ recursive 7 วันล่วงหน้า (ใช้ผลลัพธ์แต่ละวันเป็น input วันถัดไป)
+
+🧮 การประเมินผล (Evaluation)
+ใช้ Root Mean Squared Error (RMSE) เพื่อวัดความคลาดเคลื่อนของผลลัพธ์จากข้อมูลจริง 7 วันล่าสุด:
+
+ARIMA RMSE: 10.99
+
+Prophet RMSE: 25.89
+
+LSTM RMSE: 9.45 (ดีที่สุด)
+
+
+Web App Features
+UI ครบถ้วนด้วย Streamlit:
+
+ช่องกรอก Stock Symbol, Forecast Days, Start/End Date
+
+ปุ่ม "🚀 Start Forecast"
+
+กราฟเปรียบเทียบ: Past + ทั้ง 3 โมเดล
+
+RMSE Evaluation แสดงค่าความแม่นยำ
+
+ปุ่ม Download CSV สำหรับ export ผลลัพธ์พยากรณ์
+
+
+Design (จากภาพ)
+ใช้ธีมสีดำ/แดง
+
+ใช้ emoji ช่วยแบ่ง section เช่น 📊, 🔍, 📥
+
+UI Responsive รองรับ desktop ใช้งานสะดวก
+
+✅ ผลลัพธ์ที่ได้
+เว็บสามารถพยากรณ์ราคาหุ้น AAPL ได้ล่วงหน้าอย่างชัดเจน
+
+ใช้ข้อมูลตั้งแต่ 2020 ถึง 2025
+
+LSTM ให้ผลลัพธ์ดีที่สุดในแง่ RMSE ขณะที่ Prophet มีความผันผวนสูง
+
+📤 จุดเด่น
+ใช้งานง่ายบนเบราว์เซอร์
+
+มีระบบเปรียบเทียบหลายโมเดลในหน้าจอเดียว
+
+รองรับการ export
+
+UI ทันสมัย + ใช้งานจริงได้ทันที
+
+🔚 สรุป
+นี่คือ Web App สำหรับการเปรียบเทียบโมเดล Time Series ที่:
+
+ครบทั้ง 3 เทคนิค: สถิติ (ARIMA), deep learning (LSTM), และ probabilistic (Prophet)
+
+ใช้ข้อมูลจริงจากตลาดหุ้น
+
+มีทั้งการแสดงผล และการประเมินผลอัตโนมัติ
+
+หากต้องการให้แนะนำเพิ่ม เช่น การ deploy บน cloud (เช่น Streamlit Cloud / Render), การปรับพารามิเตอร์โมเดล, หรือการขยายผลกับหลายหุ้น สามารถแจ้งได้เลยครับ ✅
+
+
+
+
+
+
+
+
+
