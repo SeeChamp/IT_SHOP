@@ -12,7 +12,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 
 def get_db():
-    DATABASE_URL = os.getenv("postgresql://postgres:dpJoNRKebPuUXgaeWKsyTthuxmfGHTrw@postgres.railway.internal:5432/railway")
+    DATABASE_URL = os.getenv("DATABASE_URL")
 
     if DATABASE_URL.startswith("postgresql://"):
         DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgres://")
