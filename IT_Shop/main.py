@@ -174,6 +174,8 @@ def register(user: UserCreate):
     conn = get_db()
     cursor = conn.cursor()
     hashed_password = hash_password(user.password)
+    print("PASSWORD", user.password)
+    print("LENGHT", len(user.password))
 
     try:
         cursor.execute("""
