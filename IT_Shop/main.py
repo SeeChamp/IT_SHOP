@@ -10,6 +10,17 @@ from fastapi.security import OAuth2PasswordBearer
 
 
 
+
+def get_db():
+    DATABASE_URL = os.getenv("postgresql://postgres:dpJoNRKebPuUXgaeWKsyTthuxmfGHTrw@postgres.railway.internal:5432/railway")
+
+    if DATABASE_URL.startswith("postgresql://"):
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgres://")
+
+    return psycopg2.connect(DATABASE_URL)
+
+
+
 app = FastAPI()
 
 
@@ -85,9 +96,7 @@ def require_admin(current_user: dict = Depends(get_current_user)):
 
 
 
-conn = psycopg2.connect(    
-    os.getenv("postgresql://postgres:dpJoNRKebPuUXgaeWKsyTthuxmfGHTrw@postgres.railway.internal:5432/railway")
-)
+
 
 
 
@@ -95,6 +104,7 @@ conn = psycopg2.connect(
 
 @app.get("/products")
 def get_products(current_user: dict = Depends(get_current_user)):
+    conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
         SELECT 
@@ -135,6 +145,7 @@ def admin_only(user = Depends(require_admin)):
     
 @app.post("/products")
 def create_product(product: ProductCreate, current_user: dict = Depends(get_current_user)):
+    conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO products (name, description, price, condition, user_id, category_id)
@@ -160,6 +171,7 @@ def create_product(product: ProductCreate, current_user: dict = Depends(get_curr
 
 @app.post("/register")
 def register(user: UserCreate):
+    conn = get_db()
     cursor = conn.cursor()
     hashed_password = hash_password(user.password)
 
@@ -193,6 +205,7 @@ def register(user: UserCreate):
 
 @app.post("/login")
 def login(user: Userlogin):
+    conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
         SELECT id, password_hash , role
@@ -232,6 +245,7 @@ def refresh_token(refresh_token: str):
 
 @app.put("/products/{product_id}")
 def update_product(product_id: int, product: ProductCreate, user_id: int = Depends(get_current_user)):
+    conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
         UPDATE products
@@ -266,6 +280,7 @@ def update_product(product_id: int, product: ProductCreate, user_id: int = Depen
 
 @app.delete("/products/{product_id}")
 def delete_product(product_id: int, current_user: dict = Depends(get_current_user)):
+    conn = get_db()
     cursor = conn.cursor()
 
     if current_user["role"] == "admin":
