@@ -193,7 +193,7 @@ def register(user: UserCreate):
 
     except Exception as e:
         conn.rollback() 
-        print("ERROR:", e)
+        print("ERROR DEBUG:", e)
 
         raise HTTPException(
             status_code=400,
