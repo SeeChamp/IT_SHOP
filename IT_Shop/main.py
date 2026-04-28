@@ -14,6 +14,9 @@ from fastapi.security import OAuth2PasswordBearer
 def get_db():
     DATABASE_URL = os.getenv("DATABASE_URL")
 
+    if not DATABASE_URL:
+        raise Exception("DATABASE_URL not found") 
+
     if DATABASE_URL.startswith("postgresql://"):
         DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgres://")
 
@@ -200,7 +203,9 @@ def register(user: UserCreate):
             detail=str(e)
         )
     
-    
+    finally:
+        cursor.close()
+        conn.close()
 
 
 
