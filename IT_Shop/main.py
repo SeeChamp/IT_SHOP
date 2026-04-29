@@ -17,7 +17,10 @@ def get_db():
     DATABASE_URL = os.getenv("DATABASE_URL")
 
     if not DATABASE_URL:
-        raise Exception("DATABASE_URL not found") 
+        raise Exception("DATABASE_URL not found")
+
+    if DATABASE_URL.startswith("postgresql://"):
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgres://")
 
     return psycopg2.connect(DATABASE_URL)
 
@@ -100,30 +103,39 @@ def require_admin(current_user: dict = Depends(get_current_user)):
 def get_products(current_user: dict = Depends(get_current_user)):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT 
-            p.id,
-            p.name,
-            p.price,
-            u.username,
-            c.name as category
-        FROM products p
-        JOIN users u ON p.user_id = u.id
-        JOIN categories c ON p.category_id = c.id
-        WHERE p.user_id = %s
-    """, (current_user["user_id"],))
 
-    rows = cursor.fetchall()
-    results = []
-    for row in rows:
-        results.append({
-            "id": row[0],
-            "name": row[1],
-            "price": row[2],
-            "username": row[3],
-            "category": row[4]
-        })
-    return results
+    try:
+        cursor.execute("""
+            SELECT 
+                p.id,
+                p.name,
+                p.price,
+                u.username,
+                c.name as category
+            FROM products p
+            JOIN users u ON p.user_id = u.id
+            JOIN categories c ON p.category_id = c.id
+            WHERE p.user_id = %s
+        """, (current_user["user_id"],))
+
+        rows = cursor.fetchall()
+        results = []
+        for row in rows:
+            results.append({
+                "id": row[0],
+                "name": row[1],
+                "price": row[2],
+                "username": row[3],
+                "category": row[4]
+            })
+
+        return results
+
+    finally:
+        cursor.close()
+        conn.close()
+    
+
 
 
 
@@ -141,23 +153,30 @@ def admin_only(user = Depends(require_admin)):
 def create_product(product: ProductCreate, current_user: dict = Depends(get_current_user)):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO products (name, description, price, condition, user_id, category_id)
-        VALUES (%s, %s, %s, %s, %s, %s)
-        RETURNING id
-    """, (product.name, 
-          product.description,
-          product.price,
-          product.condition,
-          current_user["user_id"],
-          product.category_id
-    ))
+
+    try:
+        cursor.execute("""
+            INSERT INTO products (name, description, price, condition, user_id, category_id)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            product.name,
+            product.description,
+            product.price,
+            product.condition,
+            current_user["user_id"],
+            product.category_id
+        ))
+
+        new_product_id = cursor.fetchone()[0]
+        conn.commit()
+
+        return {"id": new_product_id, "message": "สร้างข้อมูลสินค้าเรียบร้อยแล้ว"}
+
+    finally:
+        cursor.close()
+        conn.close()
     
-
-    new_product_id = cursor.fetchone()[0]
-    conn.commit()
-
-    return {"id": new_product_id, "message": "สร้างข้อมูลสินค้าเรียบร้อยแล้ว"}
 
 
 
@@ -204,36 +223,35 @@ def register(user: UserCreate):
 def login(user: Userlogin):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT id, password_hash , role
-        FROM users
-        WHERE username = %s
-    """, (user.username,))
 
-    result = cursor.fetchone()
-    if not result:
-        raise HTTPException(status_code=400, detail="ไม่พบผู้ใช้ในระบบ")
-    
-    user_id, hashed_password, role = result
-    if not verify_password(user.password, hashed_password):
-        raise HTTPException(status_code=400, detail="ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
-    
-    access_token = create_access_token(data={"sub": str(user_id), "role": role})
-    refresh_token = create_refresh_token(data={"sub": str(user_id)})
-    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+    try:
+        cursor.execute("""
+            SELECT id, password_hash , role
+            FROM users
+            WHERE username = %s
+        """, (user.username,))
 
+        result = cursor.fetchone()
+        if not result:
+            raise HTTPException(status_code=400, detail="ไม่พบผู้ใช้ในระบบ")
 
+        user_id, hashed_password, role = result
 
+        if not verify_password(user.password, hashed_password):
+            raise HTTPException(status_code=400, detail="ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
 
+        access_token = create_access_token(data={"sub": str(user_id), "role": role})
+        refresh_token = create_refresh_token(data={"sub": str(user_id)})
 
-@app.post("/refresh")
-def refresh_token(refresh_token: str):
-    payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-    user_id = payload.get("sub")
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer"
+        }
 
-    new_access_token = create_access_token(data={"sub": str(user_id)})
-
-    return {"access_token": new_access_token, "token_type": "bearer"}
+    finally:
+        cursor.close()
+        conn.close()
 
 
 
@@ -241,7 +259,7 @@ def refresh_token(refresh_token: str):
 
 
 @app.put("/products/{product_id}")
-def update_product(product_id: int, product: ProductCreate, user_id: int = Depends(get_current_user)):
+def update_product(product_id: int, product: ProductCreate, current_user: dict = Depends(get_current_user)):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
@@ -259,7 +277,7 @@ def update_product(product_id: int, product: ProductCreate, user_id: int = Depen
           product.condition,
           product.category_id,
           product_id,
-          user_id
+          current_user["user_id"]
     ))
 
 
