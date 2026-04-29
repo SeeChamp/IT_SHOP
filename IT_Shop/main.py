@@ -1,3 +1,5 @@
+import hashlib
+import bcrypt
 import os
 import psycopg2
 from model  import ProductCreate, UserCreate, Userlogin
@@ -50,13 +52,16 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     except:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-def hash_password(password: str):
-    return pwd_context.hash(password[:72])
+def _sha256_bytes(password: str) -> bytes:
+    return hashlib.sha256(password.encode()).hexdigest().encode()
 
+def hash_password(password: str):
+    prehashed = _sha256_bytes(password)
+    return bcrypt.hashpw(prehashed, bcrypt.gensalt()).decode()
 
 def verify_password(plain_password: str, hashed_password: str):
-    return pwd_context.verify(plain_password[:72], hashed_password)
-
+    prehashed = _sha256_bytes(plain_password)
+    return bcrypt.checkpw(prehashed, hashed_password.encode())
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
