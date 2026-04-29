@@ -17,9 +17,6 @@ def get_db():
     if not DATABASE_URL:
         raise Exception("DATABASE_URL not found") 
 
-    if DATABASE_URL.startswith("postgresql://"):
-        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgres://")
-
     return psycopg2.connect(DATABASE_URL)
 
 
@@ -37,21 +34,10 @@ security = HTTPBearer()
 
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
 
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
 
-        return int(user_id)
-
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Token ไม่ถูกต้อง")
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
